@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "AsthmaSense AI",
+    "slug": "asthmasense-ai-9k4n02uhsahw1af7sr2tj",
+    "version": "1.0.0",
+    "scheme": "asthmasense",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#070B12"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.asthmasense.ai",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Record breathing and cough audio for AI analysis.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#080C14"
+      },
+      "package": "com.asthmasense.ai",
+      "permissions": [
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow AsthmaSense AI to record breathing and cough audio for analysis."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3510abd2-c24d-474f-8ed4-4c7fe1c21f59"
+      }
+    },
+    "owner": "akashkrish1010"
+  }
+}

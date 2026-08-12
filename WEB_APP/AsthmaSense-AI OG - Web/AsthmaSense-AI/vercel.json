@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npx --node-options=\"--max-old-space-size=4096\" expo export -p web",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

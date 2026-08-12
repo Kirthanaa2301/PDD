@@ -1,0 +1,15 @@
+{
+    "datasets": {},
+    "patient_analysis": {},
+    "duration_stats": {},
+    "sample_rate_stats": {},
+    "channels_stats": {},
+    "data_leakage_risks": [],
+    "pipeline_flaws": [
+        "1. Random File Splitting vs Patient Grouping: Existing pipeline split samples by individual file without group-splitting by patient ID, artificially inflating test metrics via patient acoustic signature leakage.",
+        "2. Fixed-Length 7-Second Window Mismatch: Respiratory cycle segments in Dataset V2 are 1.5 - 5 seconds, while raw ICBHI recordings are 20 seconds. Zero-padding short segments with 5+ seconds of silence distorts recurrent BiLSTM feature sequences.",
+        "3. Lack of True Two-Stage Decoupling: A single multi-class model must assign non-respiratory audio to a disease class unless filtered by hardcoded rules.",
+        "4. Absence of Dynamic Respiratory Cycle Segmentation: Long recordings contain multiple inhale/exhale cycles with silent pauses.",
+        "5. Softmax Overconfidence: Standard uncalibrated softmax assigns high probabilities to out-of-distribution inputs without temperature scaling or entropy gating."
+    ]
+}

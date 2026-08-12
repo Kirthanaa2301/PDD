@@ -1,0 +1,40 @@
+export type RootStackParamList = {
+  Welcome: undefined;
+  PhoneLogin: undefined;
+  VerifyOtp: undefined;
+  LoginSuccess: undefined;
+  CreateProfile: undefined;
+  PrivacySetup: undefined;
+  Theme: undefined;
+  Permissions: undefined;
+  OnboardingWelcome: undefined;
+  AsthmaTriggers: undefined;
+  CustomTrigger: undefined;
+  SymptomsTiming: undefined;
+  SeverityLevel: undefined;
+  MedicationSetup: undefined;
+  CommonMedications: undefined;
+  Dosage: undefined;
+  Timing: undefined;
+  AddMedication: undefined;
+  DailyHabits: undefined;
+  EmergencyContact: undefined;
+  MainTabs: undefined;
+  BreathingTest: undefined;
+  BreathingExercise: { type: string; level: string };
+  SymptomDetail: { symptom: string };
+  TriggerJournal: undefined;
+  Insights: undefined;
+  DoctorReport: undefined;
+  Medications: undefined;
+  AIChat: undefined;
+  BreathingMonitor: undefined;
+};
+
+export type MainTabParamList = {
+  Home: undefined;
+  Breathing: undefined;
+  Tracking: undefined;
+  Reports: undefined;
+  Profile: undefined;
+};

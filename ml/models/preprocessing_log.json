@@ -1,0 +1,31 @@
+{
+    "scanned_files": 3331,
+    "corrupted_files": [],
+    "duplicate_files": [
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\healthy\\P16Healthy18S.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\healthy\\P16Healthy38S.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\healthy\\P16Healthy41S.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\healthy\\P23Healthy14S.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\healthy\\P23Healthy97S.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\healthy\\P23Healthy98S.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\pneumonia\\P44Pneumonia47J.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\pneumonia\\P44Pneumonia49B.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\pneumonia\\P44Pneumonia71M.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\pneumonia\\P48Pneumonia31K.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\pneumonia\\P48Pneumonia61T.wav",
+        "d:\\PDD WITH MODEL\\DATASETS\\Asthma Detection Dataset Version 2\\Asthma Detection Dataset Version 2\\pneumonia\\P48Pneumonia82Z.wav"
+    ],
+    "class_counts": {
+        "healthy": 162,
+        "asthma": 289,
+        "copd": 1194,
+        "pneumonia": 316,
+        "other_abnormal": 158,
+        "invalid": 1200
+    },
+    "sources": {
+        "dataset_v2": 1199,
+        "resp_sound_db": 920,
+        "invalid_dataset": 1200
+    }
+}
