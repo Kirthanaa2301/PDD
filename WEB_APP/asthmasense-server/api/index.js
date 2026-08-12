@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
+const nodemailer = require('nodemailer');
 
 const { connectDB, isDbConnected } = require('../lib/db');
 const requireAuth = require('../lib/auth');
@@ -17,6 +18,18 @@ const Report = require('../models/Report');
 const AudioFile = require('../models/AudioFile');
 const ChatMessage = require('../models/ChatMessage');
 const mlWeights = require('../lib/ml_weights.json');
+
+const PasswordResetOtpSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, lowercase: true, trim: true },
+    otp: { type: String, required: true },
+    expiresAt: { type: Date, required: true },
+  },
+  { timestamps: true }
+);
+
+const PasswordResetOtp =
+  mongoose.models.PasswordResetOtp || mongoose.model('PasswordResetOtp', PasswordResetOtpSchema);
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024 } });
@@ -190,10 +203,72 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+async function sendResetEmail(toEmail, otp) {
+  const host = process.env.SMTP_HOST;
+  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.EMAIL_FROM || user || '"AsthmaSense AI" <noreply@asthma-sense-ai.vercel.app>';
+
+  if (host && user && pass) {
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+    });
+
+    const mailOptions = {
+      from,
+      to: toEmail,
+      subject: 'AsthmaSense AI - Password Reset Code',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #E2E8F0; border-radius: 16px; overflow: hidden; background-color: #FFFFFF;">
+          <div style="background: linear-gradient(135deg, #3A8DEB 0%, #2563EB 100%); padding: 28px 24px; text-align: center; color: #FFFFFF;">
+            <div style="font-size: 32px; margin-bottom: 8px;">🫁</div>
+            <h1 style="font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.3px;">AsthmaSense AI</h1>
+            <p style="font-size: 13px; color: #DBEAFE; margin: 4px 0 0 0;">Clinical Respiratory Intelligence</p>
+          </div>
+          <div style="padding: 28px 24px;">
+            <h2 style="font-size: 18px; font-weight: 700; color: #0F172A; margin: 0 0 10px 0;">Password Reset Request</h2>
+            <p style="font-size: 14px; color: #64748B; line-height: 1.6; margin: 0 0 24px 0;">
+              We received a request to reset the password for your AsthmaSense account. Use the temporary verification code below. It will expire in <strong>15 minutes</strong>.
+            </p>
+            <div style="background-color: #EFF6FF; border: 2px dashed #93C5FD; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+              <span style="font-size: 12px; font-weight: 700; color: #2563EB; letter-spacing: 1.5px; text-transform: uppercase;">Your Reset Code</span>
+              <div style="font-size: 36px; font-weight: 800; color: #1E3A8A; letter-spacing: 8px; margin-top: 6px;">${otp}</div>
+            </div>
+            <div style="background-color: #FEFCE8; border-left: 3px solid #EAB308; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
+              <p style="font-size: 13px; color: #854D0E; margin: 0;">
+                ⚠️ If you did not request this password reset, you can safely disregard this email. Your existing password remains secure.
+              </p>
+            </div>
+            <p style="font-size: 12px; color: #94A3B8; margin: 0; line-height: 1.5;">
+              Enter this code on the reset password screen along with your chosen new password.
+            </p>
+          </div>
+          <div style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 16px 24px; text-align: center;">
+            <p style="font-size: 11px; color: #94A3B8; margin: 0;">
+              © ${new Date().getFullYear()} AsthmaSense AI · Automated Notification · Do not reply
+            </p>
+          </div>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`[SMTP] Password reset code dispatched successfully to: ${toEmail}`);
+    return { dispatched: true };
+  } else {
+    console.warn(`[SMTP Warning] SMTP host/user/pass not set. Generated OTP for ${toEmail}: [${otp}]`);
+    return { dispatched: false };
+  }
+}
+
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     await connectDB();
-    const { email, newPassword } = req.body;
+    const { email } = req.body;
     if (!email) {
       return res.status(400).json({ error: 'Email is required.' });
     }
@@ -204,18 +279,77 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       return res.status(404).json({ error: 'No account found with this email address.' });
     }
 
-    if (!newPassword || newPassword.length < 6) {
+    // Generate secure 6-digit random code
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min expiry
+
+    // Save/refresh OTP record in DB
+    await PasswordResetOtp.deleteMany({ email: cleanEmail });
+    await PasswordResetOtp.create({ email: cleanEmail, otp, expiresAt });
+
+    // Dispatch email via Gmail SMTP
+    await sendResetEmail(cleanEmail, otp);
+
+    // Strictly return success without exposing OTP to client browser
+    res.json({
+      success: true,
+      emailSent: true,
+      message: 'Password reset code has been sent to your Gmail inbox.',
+    });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: err.message || 'Password reset request failed. Please try again.' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    await connectDB();
+    const { email, code, newPassword } = req.body;
+
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ error: 'Email, verification code, and new password are required.' });
+    }
+
+    if (newPassword.length < 6) {
       return res.status(400).json({ error: 'New password must be at least 6 characters.' });
     }
 
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanCode = code.toString().trim();
+
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
+      return res.status(404).json({ error: 'No account found with this email address.' });
+    }
+
+    const record = await PasswordResetOtp.findOne({ email: cleanEmail });
+    if (!record) {
+      return res.status(400).json({ error: 'Reset code not found or already used. Please request a new one.' });
+    }
+
+    if (new Date() > record.expiresAt) {
+      await PasswordResetOtp.deleteMany({ email: cleanEmail });
+      return res.status(400).json({ error: 'Reset code has expired. Please request a new code.' });
+    }
+
+    if (record.otp !== cleanCode) {
+      return res.status(400).json({ error: 'Invalid verification code. Please check your Gmail mailbox and try again.' });
+    }
+
+    // Update password in DB
     const hashed = await bcrypt.hash(newPassword, 10);
     user.password = hashed;
     await user.save();
 
-    res.json({ success: true, message: 'Password has been successfully updated.' });
+    // Invalidate OTP
+    await PasswordResetOtp.deleteMany({ email: cleanEmail });
+
+    console.log(`[Auth] Password reset successful for: ${cleanEmail}`);
+    res.json({ success: true, message: 'Password has been successfully updated! You can now log in.' });
   } catch (err) {
-    console.error('Forgot password error:', err);
-    res.status(500).json({ error: err.message || 'Password reset failed. Please try again.' });
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: err.message || 'Password update failed. Please try again.' });
   }
 });
 

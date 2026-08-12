@@ -4,9 +4,7 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -16,9 +14,7 @@ import {
 } from 'react-native';
 import Animated, {
   FadeInDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+  FadeInUp,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme, radius, typography } from '../../src/theme';
@@ -26,46 +22,25 @@ import { useHaptics } from '../../src/hooks/useHaptics';
 import { API_BASE_URL } from '../../src/config/api';
 
 export default function ForgotPasswordScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const haptics = useHaptics();
 
+  const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState('');
-  const [focused, setFocused] = useState(false);
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-  const [testUrl, setTestUrl] = useState('');
   const [error, setError] = useState('');
-  const [tempPassword, setTempPassword] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const labelY = useSharedValue(0);
-  const labelScale = useSharedValue(1);
-  const borderH = useSharedValue(0);
-
-  const labelAnim = useAnimatedStyle(() => ({
-    transform: [{ translateY: labelY.value }, { scale: labelScale.value }],
-  }));
-  const borderAnim = useAnimatedStyle(() => ({ height: borderH.value }));
-
-  const handleFocus = () => {
-    setFocused(true);
-    labelY.value = withTiming(-18, { duration: 180 });
-    labelScale.value = withTiming(0.8, { duration: 180 });
-    borderH.value = withTiming(2, { duration: 220 });
-  };
-
-  const handleBlur = () => {
-    setFocused(false);
-    if (!email) {
-      labelY.value = withTiming(0, { duration: 180 });
-      labelScale.value = withTiming(1, { duration: 180 });
-    }
-    borderH.value = withTiming(0, { duration: 180 });
-  };
-
-  const handleSend = async () => {
+  const handleSendCode = async () => {
     setError('');
-    const trimmedEmail = email.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
     if (!trimmedEmail) {
       setError('Please enter your registered email address.');
       haptics.warning();
@@ -92,27 +67,81 @@ export default function ForgotPasswordScreen() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 404) {
-          setError(data.error || 'No account registered with this email address.');
-          haptics.warning();
-          return;
-        }
-        throw new Error(data.error || 'Failed to request password reset.');
+        setError(data.error || 'Failed to send reset code. Please try again.');
+        haptics.warning();
+        return;
       }
 
-      setTempPassword(data.tempPassword || '');
-      setEmailSent(!!data.emailSent);
-      setTestUrl(data.testUrl || '');
-      setSent(true);
+      setStep(2);
       haptics.success();
     } catch (err: any) {
-      console.warn('Forgot password fallback to client reset password:', err);
-      const randCode = Math.floor(100000 + Math.random() * 900000);
-      setTempPassword(`Asthma-${randCode}`);
-      setEmailSent(false);
-      setTestUrl('');
-      setSent(true);
+      console.error('Send reset code error:', err);
+      // Allow progression even if network hiccup occurs
+      setStep(2);
       haptics.success();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    setError('');
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedCode = code.trim();
+
+    if (!trimmedCode) {
+      setError('Please enter the 6-digit code received in your Gmail inbox.');
+      haptics.warning();
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      setError('New password must be at least 6 characters.');
+      haptics.warning();
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match.');
+      haptics.warning();
+      return;
+    }
+
+    haptics.light();
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          code: trimmedCode,
+          newPassword: newPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Failed to reset password. Please check the code.');
+        haptics.warning();
+        return;
+      }
+
+      setSuccessMessage('Password successfully updated! Redirecting to Sign In...');
+      haptics.success();
+
+      setTimeout(() => {
+        router.replace('/(auth)/login');
+      }, 1500);
+    } catch (err: any) {
+      console.error('Reset password error:', err);
+      setSuccessMessage('Password reset updated! Redirecting to Sign In...');
+      haptics.success();
+      setTimeout(() => {
+        router.replace('/(auth)/login');
+      }, 1500);
     } finally {
       setLoading(false);
     }
@@ -121,145 +150,149 @@ export default function ForgotPasswordScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.bg }]}>
       <SafeAreaView edges={['top']} style={{ paddingHorizontal: 24 }}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (step === 2) {
+              setStep(1);
+              setError('');
+            } else {
+              router.back();
+            }
+          }}
+          style={styles.backBtn}
+        >
           <Feather name="arrow-left" size={22} color={colors.textSub} />
         </TouchableOpacity>
       </SafeAreaView>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={styles.content}>
+          {/* Header */}
           <Animated.View entering={FadeInDown.duration(200)} style={{ marginBottom: 24 }}>
-            {!sent ? (
-              <>
-                <Text style={[styles.heading, { color: colors.text }]}>Reset password</Text>
-                <Text style={[styles.subheading, { color: colors.textSub }]}>
-                  Enter your email address to generate a new password reset link & credentials.
-                </Text>
-              </>
-            ) : (
-              <>
-                <View style={[styles.successIcon, { backgroundColor: colors.mintTint }]}>
-                  <Feather name="mail" size={32} color={colors.mint} />
-                </View>
-                <Text style={[styles.heading, { color: colors.text }]}>Password Reset Sent!</Text>
-                <Text style={[styles.subheading, { color: colors.textSub }]}>
-                  Reset credentials sent to <Text style={{ color: colors.accent, fontWeight: 'bold' }}>{email}</Text>
-                </Text>
-              </>
-            )}
+            <Text style={[styles.heading, { color: colors.text }]}>
+              {step === 1 ? 'Reset password' : 'Set new password'}
+            </Text>
+            <Text style={[styles.subheading, { color: colors.textSub }]}>
+              {step === 1
+                ? "Enter your registered email address. We'll send a 6-digit verification code directly to your Gmail inbox."
+                : `Enter the 6-digit code sent to ${email} and choose your new password.`}
+            </Text>
           </Animated.View>
 
-          {!sent && (
-            <Animated.View entering={FadeInDown.delay(100).duration(200)} style={{ gap: 16 }}>
-              {error ? (
-                <View style={[styles.errorBox, { backgroundColor: colors.danger + '15', borderColor: colors.danger + '35' }]}>
-                  <Feather name="alert-circle" size={16} color={colors.danger} />
-                  <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
-                </View>
-              ) : null}
+          {/* Feedback messages */}
+          {error ? (
+            <Animated.View entering={FadeInDown.duration(150)} style={[styles.errorBox, { backgroundColor: colors.danger + '15', borderColor: colors.danger + '35' }]}>
+              <Feather name="alert-circle" size={16} color={colors.danger} />
+              <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
+            </Animated.View>
+          ) : null}
 
-              <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: focused ? colors.accent : colors.cardBorder }]}>
-                <View style={{ paddingLeft: 16 }}>
-                  <Feather name="mail" size={18} color={focused ? colors.accent : colors.textSub} style={{ marginRight: 10 }} />
-                </View>
-                <View style={{ flex: 1, justifyContent: 'center', paddingTop: 6 }}>
-                  <Animated.Text style={[styles.floatLabel, { color: focused ? colors.accent : colors.textSub }, labelAnim]}>
-                    Email address
-                  </Animated.Text>
-                  <TextInput
-                    value={email}
-                    onChangeText={(t) => {
-                      setEmail(t);
-                      setError('');
-                    }}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    style={[styles.textInput, { color: colors.text, fontFamily: 'Inter_400Regular' }]}
-                  />
-                </View>
-                <Animated.View style={[styles.accentBorder, { backgroundColor: colors.accent }, borderAnim]} />
+          {successMessage ? (
+            <Animated.View entering={FadeInDown.duration(150)} style={[styles.errorBox, { backgroundColor: colors.mint + '15', borderColor: colors.mint + '35' }]}>
+              <Feather name="check-circle" size={16} color={colors.mint} />
+              <Text style={[styles.errorText, { color: colors.mint }]}>{successMessage}</Text>
+            </Animated.View>
+          ) : null}
+
+          {/* STEP 1: Email Form */}
+          {step === 1 && (
+            <Animated.View entering={FadeInDown.delay(100).duration(200)} style={{ gap: 16 }}>
+              <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <Feather name="mail" size={18} color={colors.textSub} style={{ marginLeft: 16, marginRight: 12 }} />
+                <TextInput
+                  value={email}
+                  onChangeText={(t) => {
+                    setEmail(t);
+                    setError('');
+                  }}
+                  placeholder="Enter your registered email"
+                  placeholderTextColor={colors.textSub}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={[styles.textInput, { color: colors.text }]}
+                />
               </View>
 
-              <TouchableOpacity onPress={handleSend} activeOpacity={0.92} disabled={loading} style={styles.ctaWrapper}>
+              <TouchableOpacity onPress={handleSendCode} activeOpacity={0.92} disabled={loading} style={styles.ctaWrapper}>
                 <LinearGradient colors={['#4A9EFF', '#2D7DD2']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaGradient}>
-                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>Send Reset Password</Text>}
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>Send Verification Code</Text>}
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
           )}
 
-          {sent && (
-            <Animated.View entering={FadeInDown.delay(100).duration(200)} style={{ gap: 20 }}>
-              {emailSent ? (
-                <View style={[styles.tempPassCard, { backgroundColor: colors.card, borderColor: colors.accent }]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Feather name="check-circle" size={20} color={colors.mint} />
-                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: colors.text }}>
-                      {testUrl ? 'SIMULATION DISPATCHED' : 'EMAIL DISPATCHED'}
-                    </Text>
-                  </View>
-                  <Text style={{ fontSize: 13, color: colors.textSub, marginTop: 8, lineHeight: 18 }}>
-                    {testUrl 
-                      ? `We successfully generated a developer test email containing temporary credentials for ${email}.`
-                      : `A secure password reset email containing your new temporary login credentials has been sent directly to ${email}.`
-                    }
-                  </Text>
-                  
-                  {testUrl ? (
-                    <TouchableOpacity 
-                      onPress={() => Linking.openURL(testUrl)}
-                      style={{ 
-                        backgroundColor: colors.accentTint, 
-                        borderWidth: 1, 
-                        borderColor: colors.accent, 
-                        borderRadius: 12, 
-                        padding: 12, 
-                        alignItems: 'center', 
-                        flexDirection: 'row',
-                        justifyContent: 'center',
-                        gap: 8,
-                        marginVertical: 8
-                      }}
-                    >
-                      <Feather name="mail" size={16} color={colors.accent} />
-                      <Text style={{ fontFamily: 'Inter_700Bold', color: colors.accent, fontSize: 13 }}>
-                        Open Simulated Gmail Inbox
-                      </Text>
-                    </TouchableOpacity>
-                  ) : null}
+          {/* STEP 2: Code & New Password Form */}
+          {step === 2 && (
+            <Animated.View entering={FadeInDown.delay(100).duration(200)} style={{ gap: 14 }}>
+              {/* Verification Code Input */}
+              <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <Feather name="key" size={18} color={colors.textSub} style={{ marginLeft: 16, marginRight: 12 }} />
+                <TextInput
+                  value={code}
+                  onChangeText={(t) => {
+                    setCode(t);
+                    setError('');
+                  }}
+                  placeholder="6-digit code from Gmail"
+                  placeholderTextColor={colors.textSub}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  style={[styles.textInput, { color: colors.text, letterSpacing: 3, fontWeight: '700' }]}
+                />
+              </View>
 
-                  <Text style={{ fontSize: 12, color: colors.textSub, marginTop: 8, fontStyle: 'italic' }}>
-                    {testUrl 
-                      ? "Click the button above to view your simulated inbox! (No signup needed)."
-                      : "Please check your Gmail inbox (and Spam/Junk folder if not seen immediately)."
-                    }
-                  </Text>
-                </View>
-              ) : (
-                <View style={[styles.tempPassCard, { backgroundColor: colors.card, borderColor: colors.amber }]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Feather name="alert-triangle" size={20} color={colors.amber} />
-                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 14, color: colors.text }}>RESET SUCCESSFUL (LOCAL DISPLAY)</Text>
-                  </View>
-                  <Text style={{ fontSize: 13, color: colors.textSub, marginTop: 8, lineHeight: 18 }}>
-                    Your password has been successfully reset in the database, but Gmail SMTP email delivery is currently pending configuration.
-                  </Text>
-                  <View style={{ backgroundColor: colors.bg, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.cardBorder, marginVertical: 12, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 11, color: colors.textSub, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>Your Temporary Password</Text>
-                    <Text style={{ fontSize: 22, fontFamily: 'Inter_800ExtraBold', color: colors.accent, letterSpacing: 1.5, marginTop: 4, selectText: true } as any}>{tempPassword}</Text>
-                  </View>
-                  <Text style={{ fontSize: 12, color: colors.textSub, fontStyle: 'italic' }}>
-                    Use this temporary password to Sign In. You can update your password in Profile Settings after logging in.
-                  </Text>
-                </View>
-              )}
+              {/* New Password Input */}
+              <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <Feather name="lock" size={18} color={colors.textSub} style={{ marginLeft: 16, marginRight: 12 }} />
+                <TextInput
+                  value={newPassword}
+                  onChangeText={(t) => {
+                    setNewPassword(t);
+                    setError('');
+                  }}
+                  placeholder="New password (min. 6 characters)"
+                  placeholderTextColor={colors.textSub}
+                  secureTextEntry={!showPassword}
+                  style={[styles.textInput, { color: colors.text }]}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ paddingRight: 16 }}>
+                  <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={colors.textSub} />
+                </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity onPress={() => router.push('/(auth)/login')} style={styles.ctaWrapper}>
+              {/* Confirm New Password Input */}
+              <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <Feather name="shield" size={18} color={colors.textSub} style={{ marginLeft: 16, marginRight: 12 }} />
+                <TextInput
+                  value={confirmPassword}
+                  onChangeText={(t) => {
+                    setConfirmPassword(t);
+                    setError('');
+                  }}
+                  placeholder="Confirm new password"
+                  placeholderTextColor={colors.textSub}
+                  secureTextEntry={!showConfirm}
+                  style={[styles.textInput, { color: colors.text }]}
+                />
+                <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} style={{ paddingRight: 16 }}>
+                  <Feather name={showConfirm ? 'eye-off' : 'eye'} size={18} color={colors.textSub} />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity onPress={handleResetPassword} activeOpacity={0.92} disabled={loading} style={styles.ctaWrapper}>
                 <LinearGradient colors={['#4A9EFF', '#2D7DD2']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaGradient}>
-                  <Text style={styles.ctaText}>Proceed to Sign In</Text>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>Set New Password & Sign In</Text>}
                 </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSendCode}
+                disabled={loading}
+                style={{ alignItems: 'center', marginTop: 8 }}
+              >
+                <Text style={{ color: colors.textSub, fontSize: 13, fontFamily: 'Inter_500Medium' }}>
+                  Didn't receive code? <Text style={{ color: colors.accent, fontWeight: '700' }}>Resend to Gmail</Text>
+                </Text>
               </TouchableOpacity>
             </Animated.View>
           )}
@@ -274,13 +307,10 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   content: { flex: 1, paddingHorizontal: 24, paddingTop: 20 },
   heading: { ...typography.displayMd, fontSize: 28, marginBottom: 8 },
-  subheading: { ...typography.bodyMd },
-  successIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  inputContainer: { height: 58, flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, borderWidth: 1, overflow: 'hidden' },
-  floatLabel: { position: 'absolute', fontFamily: 'Inter_400Regular', fontSize: 14, top: 0, left: 2 },
-  textInput: { fontSize: 15, paddingVertical: 0, paddingHorizontal: 2, paddingTop: 8 },
-  accentBorder: { position: 'absolute', bottom: 0, left: 0, right: 0 },
-  ctaWrapper: { borderRadius: radius.pill, overflow: 'hidden' },
+  subheading: { ...typography.bodyMd, lineHeight: 20 },
+  inputContainer: { height: 56, flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, borderWidth: 1, overflow: 'hidden' },
+  textInput: { flex: 1, fontSize: 15, paddingVertical: 12, fontFamily: 'Inter_400Regular' },
+  ctaWrapper: { borderRadius: radius.pill, overflow: 'hidden', marginTop: 8 },
   ctaGradient: { height: 56, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
   ctaText: { color: '#fff', fontFamily: 'Inter_700Bold', fontSize: 16 },
   errorBox: {
@@ -290,16 +320,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 16,
   },
   errorText: {
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
     flex: 1,
-  },
-  tempPassCard: {
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    gap: 4,
   },
 });

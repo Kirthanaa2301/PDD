@@ -20,31 +20,9 @@ import { useAuthStore } from '../src/store';
 const { width } = Dimensions.get('window');
 
 export default function SplashScreen() {
-  const token = useAuthStore((s: any) => s.token);
-  const user = useAuthStore((s: any) => s.user);
-  const _hydrated = useAuthStore((s: any) => s._hydrated);
-  const [showOnboarding, setShowOnboarding] = useState(true);
   const { colors, isDark } = useTheme();
   const [slide, setSlide] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
-
-  // Redirect immediately once the store is hydrated if user is logged in
-  useEffect(() => {
-    if (!_hydrated) return;
-
-    if (token) {
-      const t = setTimeout(() => {
-        try {
-          if (user?.hasCompletedOnboarding) {
-            router.replace('/(tabs)');
-          } else {
-            router.replace('/(auth)/questionnaire');
-          }
-        } catch (_) {}
-      }, 50);
-      return () => clearTimeout(t);
-    }
-  }, [_hydrated, token, user]);
 
   const orbScale1 = useRef(new Animated.Value(1)).current;
   const orbScale2 = useRef(new Animated.Value(1)).current;
@@ -52,17 +30,9 @@ export default function SplashScreen() {
   const titleOpacity = useRef(new Animated.Value(0)).current;
   const titleY = useRef(new Animated.Value(16)).current;
   const taglineOpacity = useRef(new Animated.Value(0)).current;
-  const pill1Y = useRef(new Animated.Value(24)).current;
-  const pill1Opacity = useRef(new Animated.Value(0)).current;
-  const pill2Y = useRef(new Animated.Value(24)).current;
-  const pill2Opacity = useRef(new Animated.Value(0)).current;
-  const pill3Y = useRef(new Animated.Value(24)).current;
-  const pill3Opacity = useRef(new Animated.Value(0)).current;
   const shimmerX = useRef(new Animated.Value(-width)).current;
 
   useEffect(() => {
-    if (!showOnboarding) return;
-
     // Breathing orb animations — staggered 600ms each
     const pulse = (val: Animated.Value, delay: number) =>
       Animated.loop(
@@ -96,19 +66,6 @@ export default function SplashScreen() {
     // Tagline
     Animated.timing(taglineOpacity, { toValue: 1, duration: 600, delay: 900, useNativeDriver: true }).start();
 
-    // Feature pills staggered
-    const pillAnim = (yVal: Animated.Value, opVal: Animated.Value, delay: number) =>
-      Animated.parallel([
-        Animated.timing(yVal, { toValue: 0, duration: 500, delay, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }),
-        Animated.timing(opVal, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
-      ]);
-
-    Animated.parallel([
-      pillAnim(pill1Y, pill1Opacity, 1200),
-      pillAnim(pill2Y, pill2Opacity, 1280),
-      pillAnim(pill3Y, pill3Opacity, 1360),
-    ]).start();
-
     // Shimmer loop on CTA button
     Animated.loop(
       Animated.sequence([
@@ -117,7 +74,7 @@ export default function SplashScreen() {
         Animated.timing(shimmerX, { toValue: -width, duration: 0, useNativeDriver: true }),
       ])
     ).start();
-  }, [showOnboarding]);
+  }, []);
 
   const handleGetStarted = () => {
     if (slide < 2) {
@@ -125,7 +82,7 @@ export default function SplashScreen() {
       setSlide(nextSlide);
       scrollViewRef.current?.scrollTo({ x: nextSlide * width, animated: true });
     } else {
-      router.push('/(auth)/login');
+      router.push('/(auth)/register');
     }
   };
 
@@ -253,6 +210,15 @@ export default function SplashScreen() {
               ]}
             />
           </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => router.push('/(auth)/login')}
+          style={{ marginTop: 12, paddingVertical: 6 }}
+        >
+          <Text style={{ color: colors.textSub, fontFamily: 'Inter_500Medium', fontSize: 13 }}>
+            Already have an account? <Text style={{ color: colors.accent, fontFamily: 'Inter_700Bold' }}>Log in</Text>
+          </Text>
         </TouchableOpacity>
       </SafeAreaView>
     </View>
