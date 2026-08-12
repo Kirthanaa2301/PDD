@@ -23,29 +23,28 @@ export default function SplashScreen() {
   const token = useAuthStore((s: any) => s.token);
   const user = useAuthStore((s: any) => s.user);
   const _hydrated = useAuthStore((s: any) => s._hydrated);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(true);
   const { colors, isDark } = useTheme();
   const [slide, setSlide] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Redirect immediately once the store is hydrated — no flash, no delay
+  // Redirect immediately once the store is hydrated if user is logged in
   useEffect(() => {
     if (!_hydrated) return;
-    
-    // If onboarding is already showing/shown, do not auto-redirect on token changes.
-    // The Login/Register flow will handle their own delayed redirects.
-    if (showOnboarding) return;
 
     if (token) {
-      if (user?.hasCompletedOnboarding) {
-        router.replace('/(tabs)');
-      } else {
-        router.replace('/(auth)/questionnaire');
-      }
-    } else {
-      setShowOnboarding(true);
+      const t = setTimeout(() => {
+        try {
+          if (user?.hasCompletedOnboarding) {
+            router.replace('/(tabs)');
+          } else {
+            router.replace('/(auth)/questionnaire');
+          }
+        } catch (_) {}
+      }, 50);
+      return () => clearTimeout(t);
     }
-  }, [_hydrated, token, user, showOnboarding]);
+  }, [_hydrated, token, user]);
 
   const orbScale1 = useRef(new Animated.Value(1)).current;
   const orbScale2 = useRef(new Animated.Value(1)).current;
@@ -129,9 +128,6 @@ export default function SplashScreen() {
       router.push('/(auth)/login');
     }
   };
-
-  // Don't render anything while hydrating or if logged in (redirect in progress)
-  if (!showOnboarding) return null;
 
   const slides = [
     {

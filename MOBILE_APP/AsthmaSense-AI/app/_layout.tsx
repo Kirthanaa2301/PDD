@@ -5,6 +5,16 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
+import Feather from '@expo/vector-icons/Feather';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import AntDesign from '@expo/vector-icons/AntDesign';
+import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
+import Octicons from '@expo/vector-icons/Octicons';
 import { Stack, router, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -76,6 +86,16 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    ...Feather.font,
+    ...Ionicons.font,
+    ...MaterialCommunityIcons.font,
+    ...MaterialIcons.font,
+    ...FontAwesome.font,
+    ...FontAwesome5.font,
+    ...FontAwesome6.font,
+    ...AntDesign.font,
+    ...SimpleLineIcons.font,
+    ...Octicons.font,
   });
 
   const _hydrated = useAuthStore((s: any) => s._hydrated);

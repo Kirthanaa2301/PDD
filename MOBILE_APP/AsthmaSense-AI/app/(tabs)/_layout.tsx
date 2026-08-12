@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { StyleSheet, View, Platform } from 'react-native';
 import Animated, {
@@ -16,11 +16,11 @@ type TabName = 'index' | 'breathing' | 'tracking' | 'analysis' | 'reports' | 'pr
 const TAB_CONFIG: Array<{
   name: TabName;
   label: string;
-  icon: keyof typeof Feather.glyphMap;
+  icon: string;
   iconSize: number;
 }> = [
   { name: 'index', label: 'Home', icon: 'home', iconSize: 20 },
-  { name: 'breathing', label: 'Breathing', icon: 'wind', iconSize: 20 },
+  { name: 'breathing', label: 'Breathing', icon: 'wind', iconSize: 18 },
   { name: 'tracking', label: 'Tracking', icon: 'activity', iconSize: 20 },
   { name: 'analysis', label: 'Analysis', icon: 'mic', iconSize: 20 },
   { name: 'reports', label: 'Reports', icon: 'bar-chart-2', iconSize: 20 },
@@ -34,7 +34,7 @@ function TabIcon({
   color,
 }: {
   focused: boolean;
-  icon: keyof typeof Feather.glyphMap;
+  icon: string;
   iconSize: number;
   color: string;
 }) {
@@ -54,7 +54,11 @@ function TabIcon({
 
   return (
     <Animated.View style={animatedStyle}>
-      <Feather name={icon} size={iconSize} color={color} />
+      {icon === 'wind' ? (
+        <FontAwesome5 name="wind" size={iconSize} color={color} />
+      ) : (
+        <Feather name={icon as any} size={iconSize} color={color} />
+      )}
     </Animated.View>
   );
 }

@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import Reanimated, {
@@ -138,6 +138,7 @@ export default function HomeScreen() {
     {
       to: '/(tabs)/breathing' as const,
       icon: 'wind' as const,
+      isFontAwesome: true,
       title: 'Breathe',
       sub: 'Exercise',
       from: 'rgba(245,166,35,0.15)',
@@ -392,7 +393,11 @@ export default function HomeScreen() {
                 />
 
                 <View style={styles.gridCardTop}>
-                  <Feather name={t.icon} size={24} color={t.iconColor} />
+                  {t.isFontAwesome ? (
+                    <FontAwesome5 name={t.icon} size={22} color={t.iconColor} />
+                  ) : (
+                    <Feather name={t.icon as any} size={24} color={t.iconColor} />
+                  )}
                   <Feather name="arrow-up-right" size={12} color={colors.textSub} />
                 </View>
 
@@ -542,7 +547,11 @@ export default function HomeScreen() {
                   ]}
                 >
                   <View style={[styles.activityIconContainer, { backgroundColor: a.bg }]}>
-                    <Feather name={a.icon} size={16} color={a.color} />
+                    {a.icon === 'wind' ? (
+                      <FontAwesome5 name="wind" size={14} color={a.color} />
+                    ) : (
+                      <Feather name={a.icon as any} size={16} color={a.color} />
+                    )}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.activityName, { color: colors.text }]} numberOfLines={1}>{a.name}</Text>
