@@ -147,6 +147,18 @@ def validate_global_uniqueness(reports_dir):
     names = []
     signatures = []
     
+    col_data = {
+        "Test Case Name": [],
+        "Module": [],
+        "Category": [],
+        "Endpoint/Screen": [],
+        "Method/Action": [],
+        "Actual Result": [],
+        "Preconditions": [],
+        "Test Steps": [],
+        "Expected Result": []
+    }
+    
     files = [
         ("Selenium_300_Test_Report.xlsx", "TC-SEL"),
         ("Appium_300_Test_Report.xlsx", "TC-APP"),
@@ -168,7 +180,7 @@ def validate_global_uniqueness(reports_dir):
             return False
             
         headers = [ws.cell(row=1, column=c).value for c in range(1, ws.max_column + 1)]
-        required = ["Test ID", "Test Case Name", "Module", "Category", "Endpoint/Screen", "Method/Action", "Priority", "Status", "Duration (ms)", "Actual Result"]
+        required = ["Test ID", "Test Case Name", "Module", "Category", "Endpoint/Screen", "Method/Action", "Priority", "Status", "Duration (ms)", "Actual Result", "Preconditions", "Test Steps", "Expected Result"]
         for col in required:
             if col not in headers:
                 print(f"  [ERROR] Required column {col} missing in {filename}")
@@ -182,6 +194,9 @@ def validate_global_uniqueness(reports_dir):
         met_idx = headers.index("Method/Action") + 1
         prio_idx = headers.index("Priority") + 1
         act_idx = headers.index("Actual Result") + 1
+        prec_idx = headers.index("Preconditions") + 1
+        steps_idx = headers.index("Test Steps") + 1
+        exp_idx = headers.index("Expected Result") + 1
         
         for r in range(2, ws.max_row + 1):
             tc_id = ws.cell(row=r, column=id_idx).value
@@ -195,12 +210,25 @@ def validate_global_uniqueness(reports_dir):
             met = ws.cell(row=r, column=met_idx).value
             prio = ws.cell(row=r, column=prio_idx).value
             act = ws.cell(row=r, column=act_idx).value
+            prec = ws.cell(row=r, column=prec_idx).value
+            steps_val = ws.cell(row=r, column=steps_idx).value
+            exp = ws.cell(row=r, column=exp_idx).value
             
             row_vals = tuple(str(ws.cell(row=r, column=c).value) for c in range(1, ws.max_column + 1))
             all_rows.append(row_vals)
             
             ids.append(str(tc_id).strip())
             names.append(str(tc_name).strip().lower())
+            
+            col_data["Test Case Name"].append(str(tc_name).strip())
+            col_data["Module"].append(str(mod).strip())
+            col_data["Category"].append(str(cat).strip())
+            col_data["Endpoint/Screen"].append(str(end).strip())
+            col_data["Method/Action"].append(str(met).strip())
+            col_data["Actual Result"].append(str(act).strip())
+            col_data["Preconditions"].append(str(prec).strip())
+            col_data["Test Steps"].append(str(steps_val).strip())
+            col_data["Expected Result"].append(str(exp).strip())
             
             sig_str = f"{str(tc_name).strip()}|{str(mod).strip()}|{str(cat).strip()}|{str(end).strip()}|{str(met).strip()}|{str(prio).strip()}|{str(act).strip()}"
             sig_hash = hashlib.sha256(sig_str.encode('utf-8')).hexdigest()
@@ -249,6 +277,32 @@ def validate_global_uniqueness(reports_dir):
             if row in seen: dupes.append(row[0])
             seen.add(row)
         print(f"  Duplicated complete rows in test IDs: {dupes[:5]}")
+        return False
+
+    # Calculate and display duplication/repetition percentages
+    print("\n" + "="*58)
+    print("        QA DATA QUALITY CONTENT REPETITION REPORT")
+    print("="*58)
+    print(f"{'Column Name':<28} | {'Unique Count':<12} | {'Repetition %':<12}")
+    print("-"*58)
+    
+    excessive_repetition = False
+    for col_name, values in col_data.items():
+        total = len(values)
+        unique = len(set(values))
+        rep_pct = (1 - (unique / total)) * 100
+        print(f"{col_name:<28} | {unique:<12} | {rep_pct:.1f}%")
+        
+        # Descriptive columns should not have high repetition
+        descriptive_cols = ["Test Case Name", "Method/Action", "Actual Result", "Preconditions", "Test Steps", "Expected Result"]
+        if col_name in descriptive_cols and rep_pct > 5.0:
+            print(f"  [WARNING] Column '{col_name}' has excessive repetition ({rep_pct:.1f}%)!")
+            excessive_repetition = True
+            
+    print("="*58)
+    
+    if excessive_repetition:
+        print("  [ERROR] Descriptive columns show duplicated templates. Content verification failed.")
         return False
         
     print("  [SUCCESS] Global uniqueness validated: 1,200 unique IDs, names, complete rows, and scenario signatures.")
