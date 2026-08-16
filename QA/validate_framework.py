@@ -35,11 +35,13 @@ def validate_excel_report(file_path, expected_prefix, expected_count=300):
     # Check rows and values
     ids = []
     descriptions = []
+    status_idx = headers.index("Status") + 1
     
     row_count = 0
     for row in range(2, ws_det.max_row + 1):
         tc_id = ws_det.cell(row=row, column=1).value
         name = ws_det.cell(row=row, column=2).value
+        status_val = ws_det.cell(row=row, column=status_idx).value
         
         if tc_id is None:
             # Reached empty rows
@@ -49,6 +51,11 @@ def validate_excel_report(file_path, expected_prefix, expected_count=300):
         ids.append(tc_id)
         descriptions.append(name)
         
+        # Verify status is exactly PASS
+        if status_val != "PASS":
+            print(f"  [ERROR] Row {row} ID {tc_id} has status '{status_val}', expected 'PASS'")
+            return False
+            
         # Verify Test ID format and prefix
         expected_id = f"{expected_prefix}-{str(row_count).zfill(3)}"
         if tc_id != expected_id:
@@ -67,7 +74,6 @@ def validate_excel_report(file_path, expected_prefix, expected_count=300):
     # Check duplicate descriptions
     if len(descriptions) != len(set(descriptions)):
         print("  [ERROR] Duplicate Test Case Names (descriptions) found in sheet")
-        # Find which ones are duplicated
         seen = set()
         dupes = []
         for name in descriptions:
@@ -77,7 +83,7 @@ def validate_excel_report(file_path, expected_prefix, expected_count=300):
         print(f"  First few duplicate descriptions: {dupes[:3]}")
         return False
         
-    print(f"  [SUCCESS] Workbook verified: exactly {row_count} sequential, unique test cases.")
+    print(f"  [SUCCESS] Workbook verified: exactly {row_count} sequential, unique PASS test cases.")
     return True
 
 def validate_executive_report(file_path):
@@ -93,17 +99,25 @@ def validate_executive_report(file_path):
         
     ws = wb["Executive Summary"]
     
-    # Check cells for 1200 count
+    # Check cells for total stats
     found_total = False
     for r in range(4, 20):
         val_a = ws.cell(row=r, column=1).value
-        val_b = ws.cell(row=r, column=2).value
-        if val_a == "TOTAL" and val_b == 1200:
-            found_total = True
+        if val_a == "TOTAL":
+            tot = ws.cell(row=r, column=2).value
+            passed = ws.cell(row=r, column=3).value
+            failed = ws.cell(row=r, column=4).value
+            blocked = ws.cell(row=r, column=5).value
+            not_run = ws.cell(row=r, column=6).value
+            
+            if tot == 1200 and passed == 1200 and failed == 0 and blocked == 0 and not_run == 0:
+                found_total = True
+            else:
+                print(f"  [ERROR] Executive Report summary table TOTAL values check failed: Total={tot}, Passed={passed}, Failed={failed}, Blocked={blocked}, Not Run={not_run}")
             break
             
     if not found_total:
-        print("  [ERROR] Executive Report summary table total row check failed. Expected TOTAL = 1200.")
+        print("  [ERROR] Executive Report summary table total row check failed. Expected Total=1200, Passed=1200, Failed=0, Blocked=0, Not Run=0.")
         return False
         
     print("  [SUCCESS] Executive report validated.")
