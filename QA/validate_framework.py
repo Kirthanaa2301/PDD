@@ -1,6 +1,7 @@
 import os
 import openpyxl
 import yaml
+import hashlib
 
 def validate_excel_report(file_path, expected_prefix, expected_count=300):
     print(f"Validating: {os.path.basename(file_path)}...")
@@ -139,6 +140,120 @@ def validate_github_workflow():
         print(f"  [ERROR] Invalid YAML in GitHub Actions workflow: {e}")
         return False
 
+def validate_global_uniqueness(reports_dir):
+    print("Validating global uniqueness across all 4 test suites...")
+    all_rows = []
+    ids = []
+    names = []
+    signatures = []
+    
+    files = [
+        ("Selenium_300_Test_Report.xlsx", "TC-SEL"),
+        ("Appium_300_Test_Report.xlsx", "TC-APP"),
+        ("Security_300_Test_Report.xlsx", "TC-SEC"),
+        ("Load_300_Test_Report.xlsx", "TC-LOAD")
+    ]
+    
+    for filename, prefix in files:
+        filepath = os.path.join(reports_dir, filename)
+        if not os.path.exists(filepath):
+            print(f"  [ERROR] File does not exist for uniqueness check: {filename}")
+            return False
+        
+        try:
+            wb = openpyxl.load_workbook(filepath)
+            ws = wb["Test Cases Detail"]
+        except Exception as e:
+            print(f"  [ERROR] Failed to load {filename}: {e}")
+            return False
+            
+        headers = [ws.cell(row=1, column=c).value for c in range(1, ws.max_column + 1)]
+        required = ["Test ID", "Test Case Name", "Module", "Category", "Endpoint/Screen", "Method/Action", "Priority", "Status", "Duration (ms)", "Actual Result"]
+        for col in required:
+            if col not in headers:
+                print(f"  [ERROR] Required column {col} missing in {filename}")
+                return False
+                
+        id_idx = headers.index("Test ID") + 1
+        name_idx = headers.index("Test Case Name") + 1
+        mod_idx = headers.index("Module") + 1
+        cat_idx = headers.index("Category") + 1
+        end_idx = headers.index("Endpoint/Screen") + 1
+        met_idx = headers.index("Method/Action") + 1
+        prio_idx = headers.index("Priority") + 1
+        act_idx = headers.index("Actual Result") + 1
+        
+        for r in range(2, ws.max_row + 1):
+            tc_id = ws.cell(row=r, column=id_idx).value
+            if tc_id is None:
+                continue
+                
+            tc_name = ws.cell(row=r, column=name_idx).value
+            mod = ws.cell(row=r, column=mod_idx).value
+            cat = ws.cell(row=r, column=cat_idx).value
+            end = ws.cell(row=r, column=end_idx).value
+            met = ws.cell(row=r, column=met_idx).value
+            prio = ws.cell(row=r, column=prio_idx).value
+            act = ws.cell(row=r, column=act_idx).value
+            
+            row_vals = tuple(str(ws.cell(row=r, column=c).value) for c in range(1, ws.max_column + 1))
+            all_rows.append(row_vals)
+            
+            ids.append(str(tc_id).strip())
+            names.append(str(tc_name).strip().lower())
+            
+            sig_str = f"{str(tc_name).strip()}|{str(mod).strip()}|{str(cat).strip()}|{str(end).strip()}|{str(met).strip()}|{str(prio).strip()}|{str(act).strip()}"
+            sig_hash = hashlib.sha256(sig_str.encode('utf-8')).hexdigest()
+            signatures.append(sig_hash)
+            
+    if len(all_rows) != 1200:
+        print(f"  [ERROR] Total combined test cases row count is {len(all_rows)}, expected exactly 1200.")
+        return False
+        
+    if len(ids) != len(set(ids)):
+        print("  [ERROR] Duplicate Test IDs found across the 4 suites!")
+        seen = set()
+        dupes = []
+        for x in ids:
+            if x in seen: dupes.append(x)
+            seen.add(x)
+        print(f"  Duplicated IDs: {dupes[:5]}")
+        return False
+        
+    if len(names) != len(set(names)):
+        print("  [ERROR] Duplicate Test Case Names (descriptions) found across the 4 suites!")
+        seen = set()
+        dupes = []
+        for x in names:
+            if x in seen: dupes.append(x)
+            seen.add(x)
+        print(f"  Duplicated names: {dupes[:5]}")
+        return False
+        
+    if len(signatures) != len(set(signatures)):
+        print("  [ERROR] Duplicate scenario signatures found across the 4 suites!")
+        seen = set()
+        dupes = []
+        for i, sig in enumerate(signatures):
+            if sig in seen:
+                dupes.append(all_rows[i][0])
+            seen.add(sig)
+        print(f"  Duplicated signatures in test IDs: {dupes[:5]}")
+        return False
+        
+    if len(all_rows) != len(set(all_rows)):
+        print("  [ERROR] Duplicate complete rows found across the 4 suites!")
+        seen = set()
+        dupes = []
+        for row in all_rows:
+            if row in seen: dupes.append(row[0])
+            seen.add(row)
+        print(f"  Duplicated complete rows in test IDs: {dupes[:5]}")
+        return False
+        
+    print("  [SUCCESS] Global uniqueness validated: 1,200 unique IDs, names, complete rows, and scenario signatures.")
+    return True
+
 def run_all_validations():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     reports_dir = os.path.join(os.path.dirname(base_dir), "reports")
@@ -158,6 +273,7 @@ def run_all_validations():
     success &= validate_executive_report(exec_path)
     success &= validate_executive_report(exec_1200_path)
     success &= validate_github_workflow()
+    success &= validate_global_uniqueness(reports_dir)
     
     if success:
         print("\n[CONGRATULATIONS] All 1,200 QA validation checks passed successfully!")
