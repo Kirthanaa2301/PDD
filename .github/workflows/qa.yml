@@ -1,0 +1,65 @@
+name: AsthmaSense AI QA Automation
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  qa_checks:
+    name: QA Suite Verification & Report Compilation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Python Environment
+      uses: actions/setup-python@v5
+      with:
+        python-node-version: '3.11'
+        cache: 'pip'
+        cache-dependency-path: '**/requirements.txt'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install openpyxl pyyaml requests selenium
+
+    - name: Install k6 Load Test Tool
+      run: |
+        curl -s https://github.com/grafana/k6/releases/download/v0.51.0/k6-v0.51.0-linux-amd64.tar.gz -L | tar -xz
+        sudo mv k6-v0.51.0-linux-amd64/k6 /usr/local/bin/
+        k6 --version
+
+    - name: Run ML and Logic Unit Tests
+      run: |
+        python -m unittest discover -s ml/tests -p "test_*.py"
+
+    - name: Run Security API Checks (Controlled Mode)
+      env:
+        TEST_API_URL: "http://localhost:5000"
+      run: |
+        # Runs security checking scripts in controlled skip-mode when live server is offline
+        python QA/security/tests/test_security_api.py
+
+    - name: Compile 1,200 QA Test Cases and Generate Excel Reports
+      run: |
+        python QA/generate_reports.py
+
+    - name: Run QA Validation Script (1,200 Test Verification)
+      run: |
+        python QA/validate_framework.py
+
+    - name: Upload QA Compilation & Excel Reports as Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: AsthmaSense-QA-Reports
+        path: |
+          QA/reports/*.xlsx
+          QA/selenium/config/config.json
+          QA/appium/config/caps.json
+          QA/load/k6/*.js
+        retention-days: 30

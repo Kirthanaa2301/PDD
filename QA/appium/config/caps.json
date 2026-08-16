@@ -1,0 +1,11 @@
+{
+  "platformName": "Android",
+  "automationName": "UiAutomator2",
+  "deviceName": "Android Emulator",
+  "appPackage": "com.asthmasensern",
+  "appActivity": "com.asthmasensern.MainActivity",
+  "noReset": true,
+  "fullReset": false,
+  "newCommandTimeout": 300,
+  "gpsEnabled": true
+}

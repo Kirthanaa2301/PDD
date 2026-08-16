@@ -1,0 +1,11 @@
+{
+  "target_url": "http://localhost:3000",
+  "browser": "chrome",
+  "timeout": 10,
+  "headless": true,
+  "test_user": {
+    "email": "qa_test_user@asthmasense.ai",
+    "password": "QATestPassword123!",
+    "name": "QA Tester"
+  }
+}
