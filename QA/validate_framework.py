@@ -127,7 +127,7 @@ def validate_github_workflow():
 
 def run_all_validations():
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    reports_dir = os.path.join(base_dir, "reports")
+    reports_dir = os.path.join(os.path.dirname(base_dir), "reports")
     
     sel_path = os.path.join(reports_dir, "Selenium_300_Test_Report.xlsx")
     app_path = os.path.join(reports_dir, "Appium_300_Test_Report.xlsx")

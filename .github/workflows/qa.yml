@@ -16,6 +16,11 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsndfile1
+
     - name: Setup Python Environment
       uses: actions/setup-python@v5
       with:
@@ -54,14 +59,57 @@ jobs:
       run: |
         python QA/validate_framework.py
 
-    - name: Upload QA Compilation & Excel Reports as Artifacts
+    - name: Verify Generated Reports Exist
+      run: |
+        ls -lah reports/
+
+    - name: Upload Selenium 300 Test Report
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: AsthmaSense-QA-Reports
+        name: Selenium-300-Test-Report
+        path: reports/Selenium_300_Test_Report.xlsx
+        if-no-files-found: error
+
+    - name: Upload Appium 300 Test Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Appium-300-Test-Report
+        path: reports/Appium_300_Test_Report.xlsx
+        if-no-files-found: error
+
+    - name: Upload Security 300 Test Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Security-300-Test-Report
+        path: reports/Security_300_Test_Report.xlsx
+        if-no-files-found: error
+
+    - name: Upload Load 300 Test Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Load-300-Test-Report
+        path: reports/Load_300_Test_Report.xlsx
+        if-no-files-found: error
+
+    - name: Upload QA 1200 Executive Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: QA-1200-Executive-Report
+        path: reports/QA_1200_Test_Executive_Report.xlsx
+        if-no-files-found: error
+
+    - name: Upload QA Framework Configs and Scripts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: QA-Framework-Configs-and-Scripts
         path: |
-          QA/reports/*.xlsx
           QA/selenium/config/config.json
           QA/appium/config/caps.json
-          QA/load/k6/*.js
-        retention-days: 30
+          QA/load/k6/load_test_script.js
+        if-no-files-found: warn

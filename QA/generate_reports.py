@@ -4,8 +4,8 @@ import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
-# Ensure reports directory exists
-reports_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
+# Ensure reports directory exists at workspace root
+reports_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "reports")
 os.makedirs(reports_dir, exist_ok=True)
 
 # Helper function to style cells
