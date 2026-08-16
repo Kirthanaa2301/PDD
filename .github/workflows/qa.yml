@@ -11,6 +11,8 @@ jobs:
   qa_checks:
     name: QA Suite Verification & Report Compilation
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
 
     steps:
     - name: Checkout Code

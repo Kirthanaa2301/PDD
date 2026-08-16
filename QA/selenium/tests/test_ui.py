@@ -10,7 +10,7 @@ try:
     from QA.selenium.pages.DashboardPage import DashboardPage
 except ImportError:
     import sys
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
     from QA.selenium.pages.LoginPage import LoginPage
     from QA.selenium.pages.DashboardPage import DashboardPage
 
