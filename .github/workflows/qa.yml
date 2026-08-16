@@ -44,6 +44,14 @@ jobs:
       run: |
         python -m unittest discover -s ml/tests -p "test_*.py"
 
+    - name: Run Selenium UI Tests
+      run: |
+        python QA/selenium/tests/test_ui.py
+
+    - name: Run Appium Mobile Tests
+      run: |
+        python QA/appium/tests/test_mobile.py
+
     - name: Run Security API Checks (Controlled Mode)
       env:
         TEST_API_URL: "http://localhost:5000"

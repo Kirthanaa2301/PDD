@@ -94,3 +94,12 @@ def load_and_preprocess_all_windows(filepath, window_sec=config.WINDOW_DURATION,
     y_clean, sr = clean_audio_signal(y, sr)
     windows = segment_audio_windows(y_clean, sr=sr, window_sec=window_sec, step_sec=step_sec)
     return windows, sr
+
+def preprocess_audio(y, sr):
+    """Clean and pad/truncate signal to reference duration * sample rate."""
+    y_clean, _ = clean_audio_signal(y, sr)
+    target_len = int(config.DURATION * config.SAMPLE_RATE)
+    if len(y_clean) >= target_len:
+        return y_clean[:target_len]
+    else:
+        return np.pad(y_clean, (0, target_len - len(y_clean)), mode='constant')
